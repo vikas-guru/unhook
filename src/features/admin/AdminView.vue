@@ -31,6 +31,7 @@ const navItems = [
   { key: 'identity', label: 'Identity', meta: 'Guest and sync' },
   { key: 'habits', label: 'Habit controls', meta: 'Tracks and templates' },
   { key: 'analytics', label: 'Analytics', meta: 'Progress signals' },
+  { key: 'engagement', label: 'Engagement', meta: 'Emails and feedback' },
   { key: 'agents', label: 'AI agents', meta: 'Plan and coach models' },
   { key: 'operations', label: 'Operations', meta: 'Notes and reset' },
 ]
@@ -43,6 +44,7 @@ const frontendModules = [
   { name: 'Watch Library', route: '/watch', status: 'Live', owner: 'Content', description: 'Habit-change videos filtered against the active habit category.' },
   { name: 'Reading Library', route: '/read', status: 'Live', owner: 'Content', description: 'Evidence-based articles plus AI-generated personalized reading.' },
   { name: 'Insights', route: '/insights', status: 'Live', owner: 'Analytics', description: 'Heatmap, mood trend, win rate, milestones, and weekly AI insight.' },
+  { name: 'User Profile', route: '/profile', status: 'Live', owner: 'Engagement', description: 'Registration email, reminder preferences, feedback, and lifecycle outbox.' },
   { name: 'Admin Console', route: '/admin', status: 'Secured', owner: 'Operations', description: 'Identity controls, habit controls, routing, notes, reset operations.' },
 ]
 
@@ -68,6 +70,7 @@ const telemetry = computed(() => [
   { label: 'Check-ins captured', value: userSummary.value.checkins },
   { label: 'Rewards unlocked', value: userSummary.value.rewardsUnlocked },
   { label: 'AI agents', value: state.aiAgents.filter((a) => a.enabled).length },
+  { label: 'Email events', value: state.engagementEvents.length },
 ])
 
 const userRows = computed(() =>
@@ -729,6 +732,62 @@ async function confirmReset() {
                 <strong>Open today view</strong>
                 <small>Check-in capture, SOS, coach, and plan progress.</small>
               </RouterLink>
+            </div>
+          </div>
+        </section>
+
+        <section v-else-if="activeSection === 'engagement'" class="admin-panel-grid">
+          <div class="admin-card admin-card-wide">
+            <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <p class="eyebrow">USER ENGAGEMENT</p>
+                <h3 class="mt-2 font-display text-2xl font-semibold">Feedback, reminders, and lifecycle emails.</h3>
+                <p class="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Browser demo mode generates auditable email events. A backend mail provider can send the same payloads later.
+                </p>
+              </div>
+              <RouterLink to="/profile" class="btn btn-primary px-5 py-3 text-xs">Open profile</RouterLink>
+            </div>
+            <div class="mt-5 grid gap-3 sm:grid-cols-4">
+              <div class="metric-tile"><p class="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Email events</p><p class="mt-2 font-display text-2xl font-semibold">{{ state.engagementEvents.length }}</p></div>
+              <div class="metric-tile"><p class="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Ready to send</p><p class="mt-2 font-display text-2xl font-semibold">{{ state.engagementEvents.filter((e) => e.status === 'Ready to send').length }}</p></div>
+              <div class="metric-tile"><p class="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Feedback</p><p class="mt-2 font-display text-2xl font-semibold">{{ state.feedback.length }}</p></div>
+              <div class="metric-tile"><p class="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Reminder</p><p class="mt-2 font-display text-xl font-semibold">{{ state.reminderSettings?.enabled ? state.reminderSettings.cadence : 'Off' }}</p></div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <p class="eyebrow">EMAIL LIFECYCLE</p>
+            <h3 class="mt-2 font-display text-2xl font-semibold">Registration and step-by-step emails.</h3>
+            <div class="email-event-list mt-5">
+              <div v-for="event in state.engagementEvents.slice(0, 8)" :key="event.id" class="email-event">
+                <div>
+                  <strong>{{ event.subject }}</strong>
+                  <small>{{ event.to || 'No recipient yet' }} · {{ event.preheader }}</small>
+                </div>
+                <span>{{ event.status }}</span>
+              </div>
+              <p v-if="!state.engagementEvents.length" class="rounded-2xl border border-[var(--hair)] p-4 text-sm text-[var(--muted)]">
+                No email events yet. Save an email in Profile or complete a milestone check-in.
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <p class="eyebrow">FEEDBACK REVIEW</p>
+            <h3 class="mt-2 font-display text-2xl font-semibold">What users tell us after progress.</h3>
+            <div class="feedback-list mt-5">
+              <article v-for="item in state.feedback.slice(0, 5)" :key="item.id" class="feedback-card">
+                <div class="flex items-center justify-between gap-3">
+                  <strong>{{ item.rating }}/5 rating</strong>
+                  <span>{{ item.completed ? 'Completed' : 'In progress' }}</span>
+                </div>
+                <p class="mt-3 text-sm leading-6 text-[var(--muted)]">{{ item.message }}</p>
+                <small>{{ item.habit }} · {{ item.streak }} day streak</small>
+              </article>
+              <p v-if="!state.feedback.length" class="rounded-2xl border border-[var(--hair)] p-4 text-sm text-[var(--muted)]">
+                Feedback submitted from the Profile page will appear here.
+              </p>
             </div>
           </div>
         </section>
