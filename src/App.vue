@@ -15,7 +15,7 @@ const router = useRouter()
 function fixRoute() {
   const p = route.path
   if (hasPlan() && p === '/start') router.replace('/today')
-  else if (!hasPlan() && !['/start', '/admin'].includes(p)) router.replace('/start')
+  else if (!hasPlan() && !['/start', '/admin', '/profile'].includes(p)) router.replace('/start')
 }
 
 // ---- Header menu -----------------------------------------------------------
@@ -95,6 +95,7 @@ onBeforeUnmount(() => {
           <RouterLink to="/insights" class="chip px-3 py-1.5">Insights</RouterLink>
           <RouterLink to="/start" class="chip px-3 py-1.5">New journey</RouterLink>
           <RouterLink to="/today" class="chip px-3 py-1.5">Today</RouterLink>
+          <RouterLink to="/profile" class="chip px-3 py-1.5">Profile</RouterLink>
         </nav>
         <div class="flex items-center gap-2 text-sm">
           <button v-if="hasPlan()" class="chip px-3 py-1.5" @click="openCoach">💬 Coach</button>
@@ -137,6 +138,9 @@ onBeforeUnmount(() => {
                 </RouterLink>
                 <RouterLink to="/insights" class="unh-menu-item" role="menuitem">
                   <span class="unh-menu-ico">📈</span> Insights
+                </RouterLink>
+                <RouterLink to="/profile" class="unh-menu-item" role="menuitem">
+                  <span class="unh-menu-ico">👤</span> Profile
                 </RouterLink>
                 <RouterLink to="/admin" class="unh-menu-item" role="menuitem">
                   <span class="unh-menu-ico">⚙️</span> Admin
