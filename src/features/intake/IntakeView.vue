@@ -6,8 +6,12 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { state, setPlan } from '../../lib/state.js'
 import { generatePlan } from './intakeAI.js'
+import { useVoiceInput } from './useVoiceInput.js'
 
 const router = useRouter()
+
+// Voice-to-text for the free-text fields (Other habit, trigger note, why).
+const voice = useVoiceInput()
 
 // ---- intake answers --------------------------------------------------------
 const habitChoice = ref('')     // a chip label, or 'Other'
@@ -124,6 +128,16 @@ const current = computed(() => steps[stepIndex.value])
 const isLast = computed(() => stepIndex.value === steps.length - 1)
 const progress = computed(() => Math.round(((stepIndex.value + 1) / steps.length) * 100))
 
+// Live intake summary for the desktop side rail.
+const summaryRows = computed(() => [
+  { label: 'Habit', value: habit.value },
+  { label: 'How often', value: frequency.value },
+  { label: 'Trigger', value: trigger.value },
+  { label: 'How long', value: duration.value },
+  { label: 'Your why', value: why.value.trim() },
+  { label: 'Readiness', value: stepIndex.value >= 5 ? `${readiness.value} / 10` : '' },
+])
+
 function back() {
   error.value = ''
   if (stepIndex.value > 0) stepIndex.value--
@@ -142,6 +156,14 @@ function next() {
 function pickHabit(c) {
   habitChoice.value = c
   if (c !== 'Other') habitOther.value = ''
+  error.value = ''
+}
+
+// Template refs auto-unwrap, so route voice toggles through here where the real
+// refs are in scope. Keyed by field so only one mic is ever live.
+function toggleVoice(key) {
+  const refs = { habitOther, triggerNote, why }
+  if (refs[key]) voice.toggle(key, refs[key])
   error.value = ''
 }
 
@@ -341,7 +363,8 @@ async function finish() {
     <!-- ============ ONBOARDING WIZARD ============ -->
     <template v-else-if="phase === 'wizard'">
       <div class="unh-wiz">
-        <div class="unh-wiz-inner">
+        <div class="unh-wiz-grid">
+        <div class="unh-wiz-main">
         <!-- brand + progress -->
         <header class="unh-wiz-head">
           <div class="unh-wiz-topline">
@@ -393,14 +416,32 @@ async function finish() {
             </div>
             <label v-if="habitChoice === 'Other'" class="mt-4 block">
               <span class="sr-only">Describe your habit</span>
-              <input
-                v-model="habitOther"
-                type="text"
-                autofocus
-                placeholder="e.g. late-night online shopping"
-                class="field px-4 py-3 text-sm"
-                @keyup.enter="next"
-              />
+              <div class="unh-field-wrap">
+                <input
+                  v-model="habitOther"
+                  type="text"
+                  autofocus
+                  placeholder="e.g. late-night online shopping"
+                  class="field px-4 py-3 text-sm"
+                  :class="voice.supported ? 'pr-14' : ''"
+                  @keyup.enter="next"
+                />
+                <button
+                  v-if="voice.supported"
+                  type="button"
+                  class="unh-mic"
+                  :class="{ 'is-live': voice.activeKey === 'habitOther' }"
+                  :aria-pressed="voice.activeKey === 'habitOther'"
+                  :aria-label="voice.activeKey === 'habitOther' ? 'Stop voice input' : 'Speak your answer'"
+                  @click="toggleVoice('habitOther')"
+                >
+                  <span class="unh-mic-ring" aria-hidden="true"></span>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+                </button>
+              </div>
+              <p v-if="voice.activeKey === 'habitOther'" class="unh-mic-hint">
+                <span class="unh-mic-wave" aria-hidden="true"><i></i><i></i><i></i></span> Listening… speak now
+              </p>
             </label>
           </fieldset>
 
@@ -436,13 +477,31 @@ async function finish() {
             </div>
             <label class="mt-4 block">
               <span class="text-sm text-[var(--muted)]">Anything more you’d add? (optional)</span>
-              <input
-                v-model="triggerNote"
-                type="text"
-                placeholder="e.g. right after a stressful call"
-                class="field mt-2 px-4 py-3 text-sm"
-                @keyup.enter="next"
-              />
+              <div class="unh-field-wrap mt-2">
+                <input
+                  v-model="triggerNote"
+                  type="text"
+                  placeholder="e.g. right after a stressful call"
+                  class="field px-4 py-3 text-sm"
+                  :class="voice.supported ? 'pr-14' : ''"
+                  @keyup.enter="next"
+                />
+                <button
+                  v-if="voice.supported"
+                  type="button"
+                  class="unh-mic"
+                  :class="{ 'is-live': voice.activeKey === 'triggerNote' }"
+                  :aria-pressed="voice.activeKey === 'triggerNote'"
+                  :aria-label="voice.activeKey === 'triggerNote' ? 'Stop voice input' : 'Speak your answer'"
+                  @click="toggleVoice('triggerNote')"
+                >
+                  <span class="unh-mic-ring" aria-hidden="true"></span>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+                </button>
+              </div>
+              <p v-if="voice.activeKey === 'triggerNote'" class="unh-mic-hint">
+                <span class="unh-mic-wave" aria-hidden="true"><i></i><i></i><i></i></span> Listening… speak now
+              </p>
             </label>
           </fieldset>
 
@@ -466,15 +525,33 @@ async function finish() {
           <div v-else-if="current.key === 'why'">
             <label>
               <span class="sr-only">Why do you want to change?</span>
-              <textarea
-                v-model="why"
-                rows="4"
-                autofocus
-                placeholder="e.g. I want to sleep better, be present with the people I love, and feel like myself again."
-                class="field resize-none px-4 py-3.5 text-sm leading-relaxed"
-                @input="error = ''"
-              />
+              <div class="unh-field-wrap">
+                <textarea
+                  v-model="why"
+                  rows="4"
+                  autofocus
+                  placeholder="e.g. I want to sleep better, be present with the people I love, and feel like myself again."
+                  class="field resize-none px-4 py-3.5 text-sm leading-relaxed"
+                  :class="voice.supported ? 'pb-12' : ''"
+                  @input="error = ''"
+                />
+                <button
+                  v-if="voice.supported"
+                  type="button"
+                  class="unh-mic unh-mic--textarea"
+                  :class="{ 'is-live': voice.activeKey === 'why' }"
+                  :aria-pressed="voice.activeKey === 'why'"
+                  :aria-label="voice.activeKey === 'why' ? 'Stop voice input' : 'Speak your answer'"
+                  @click="toggleVoice('why')"
+                >
+                  <span class="unh-mic-ring" aria-hidden="true"></span>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+                </button>
+              </div>
             </label>
+            <p v-if="voice.activeKey === 'why'" class="unh-mic-hint">
+              <span class="unh-mic-wave" aria-hidden="true"><i></i><i></i><i></i></span> Listening… tell me in your own words
+            </p>
           </div>
 
           <!-- STEP: readiness -->
@@ -527,8 +604,8 @@ async function finish() {
           </button>
         </div>
 
-        <!-- gentle reminders (accurate psychoeducation, fills the page warmly) -->
-        <section class="unh-remind" aria-label="Gentle reminders">
+        <!-- reminders: shown inline on mobile; the rail replaces them on desktop -->
+        <section class="unh-remind unh-remind--mobile" aria-label="Gentle reminders">
           <p class="unh-remind-head">
             <span class="unh-live unh-live--calm" aria-hidden="true"></span>
             A few gentle reminders while you go
@@ -541,7 +618,35 @@ async function finish() {
             </li>
           </ul>
         </section>
-        </div>
+        </div><!-- /.unh-wiz-main -->
+
+        <!-- Desktop side rail: live intake summary + a contextual reminder. -->
+        <aside class="unh-wiz-rail" aria-label="Your intake so far">
+          <div class="unh-rail-card">
+            <p class="unh-rail-head">
+              <span class="unh-live unh-live--calm" aria-hidden="true"></span> Your intake
+            </p>
+            <ul class="unh-rail-list" role="list">
+              <li
+                v-for="(row, i) in summaryRows"
+                :key="row.label"
+                class="unh-rail-row"
+                :data-filled="!!row.value"
+                :data-active="i === stepIndex"
+              >
+                <span class="unh-rail-check" aria-hidden="true"></span>
+                <span class="unh-rail-label">{{ row.label }}</span>
+                <span class="unh-rail-value">{{ row.value || '—' }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="unh-rail-fact">
+            <span class="unh-fact-icon" aria-hidden="true">{{ facts[stepIndex].icon }}</span>
+            <strong class="unh-fact-title">{{ facts[stepIndex].title }}</strong>
+            <span class="unh-fact-body">{{ facts[stepIndex].body }}</span>
+          </div>
+        </aside>
+        </div><!-- /.unh-wiz-grid -->
       </div>
     </template>
 
@@ -1076,10 +1181,115 @@ async function finish() {
 }
 
 /* =============================== WIZARD ================================= */
-.unh-wiz-inner {
+/* Wizard: single column on mobile, question flow + side rail on desktop. */
+.unh-wiz { max-width: 82rem; }
+.unh-wiz-grid {
   max-width: 44rem;
   margin: 0 auto;
   padding-top: clamp(0.5rem, 3vw, 1.5rem);
+}
+@media (min-width: 1024px) {
+  .unh-wiz-grid {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    align-items: start;
+    gap: clamp(2rem, 3.5vw, 3.25rem);
+  }
+}
+.unh-wiz-main { min-width: 0; }
+
+/* Side rail — sticky, holds the live summary + a contextual reminder. */
+.unh-wiz-rail { display: none; }
+@media (min-width: 1024px) {
+  .unh-wiz-rail {
+    display: flex; flex-direction: column; gap: 1rem;
+    position: sticky; top: 5.5rem;
+    animation: unh-rise 0.6s var(--ease) both; animation-delay: 0.12s;
+  }
+}
+.unh-rail-card {
+  padding: 1.25rem 1.3rem;
+  border: 1px solid var(--hair); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(240, 236, 225, 0.02), transparent), var(--panel);
+}
+.unh-rail-head {
+  display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.9rem;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+}
+.unh-rail-list { margin: 0; padding: 0; list-style: none; }
+.unh-rail-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.6rem;
+  padding: 0.6rem 0; border-top: 1px solid var(--hair);
+}
+.unh-rail-row:first-child { border-top: 0; }
+.unh-rail-check {
+  position: relative; width: 15px; height: 15px; flex: none;
+  border: 1.5px solid var(--hair); border-radius: 999px; background: transparent;
+  transition: background-color .3s var(--ease), border-color .3s var(--ease), box-shadow .3s var(--ease);
+}
+.unh-rail-row[data-filled="true"] .unh-rail-check { background: var(--accent-2); border-color: var(--accent-2); }
+.unh-rail-row[data-filled="true"] .unh-rail-check::after {
+  content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+  border: solid var(--panel); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.unh-rail-row[data-active="true"] .unh-rail-check { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224, 120, 90, 0.16); }
+.unh-rail-label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+.unh-rail-row[data-filled="true"] .unh-rail-label { color: var(--ink); }
+.unh-rail-value {
+  font-size: 0.82rem; color: var(--ink); text-align: right;
+  max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.unh-rail-row:not([data-filled="true"]) .unh-rail-value { color: var(--muted); opacity: 0.55; }
+.unh-rail-fact {
+  display: flex; flex-direction: column;
+  padding: 1.2rem 1.3rem;
+  border: 1px solid var(--hair); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(95, 178, 127, 0.05), transparent 60%), var(--panel);
+}
+
+/* Reminders show inline on mobile only; the rail covers desktop. */
+@media (min-width: 1024px) { .unh-remind--mobile { display: none; } }
+
+/* ---------------------------- Voice input ------------------------------ */
+.unh-field-wrap { position: relative; }
+.unh-mic {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 999px;
+  border: 1px solid var(--hair); background: rgba(240, 236, 225, 0.05);
+  color: var(--muted);
+  transition: color .2s var(--ease), border-color .2s var(--ease), background-color .2s var(--ease);
+}
+.unh-mic--textarea { top: auto; bottom: 10px; transform: none; }
+.unh-mic:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--hair)); }
+.unh-mic:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(224, 120, 90, 0.55); }
+.unh-mic svg { position: relative; z-index: 1; }
+.unh-mic-ring { position: absolute; inset: -2px; border-radius: 999px; pointer-events: none; opacity: 0; }
+.unh-mic.is-live { color: #fff; background: var(--accent); border-color: var(--accent); }
+.unh-mic.is-live .unh-mic-ring {
+  opacity: 1; box-shadow: 0 0 0 0 rgba(224, 120, 90, 0.5);
+  animation: unh-mic-pulse 1.6s ease-out infinite;
+}
+@keyframes unh-mic-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(224, 120, 90, 0.5); }
+  70%  { box-shadow: 0 0 0 10px rgba(224, 120, 90, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(224, 120, 90, 0); }
+}
+.unh-mic-hint {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--accent);
+}
+.unh-mic-wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.unh-mic-wave i { width: 3px; border-radius: 2px; background: currentColor; animation: unh-mic-eq 0.9s ease-in-out infinite; }
+.unh-mic-wave i:nth-child(1) { height: 40%; animation-delay: 0s; }
+.unh-mic-wave i:nth-child(2) { height: 100%; animation-delay: 0.15s; }
+.unh-mic-wave i:nth-child(3) { height: 60%; animation-delay: 0.3s; }
+@keyframes unh-mic-eq { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .unh-wiz-rail { animation: none; }
+  .unh-mic.is-live .unh-mic-ring, .unh-mic-wave i { animation: none; }
 }
 .unh-wiz-head { animation: unh-rise 0.6s var(--ease) both; }
 .unh-wiz-topline { display: flex; align-items: center; justify-content: space-between; }

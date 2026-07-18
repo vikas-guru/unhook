@@ -15,6 +15,10 @@ export const state = reactive({
   adminUsers: [], // admin/demo user progress rows
   aiAgents: [], // admin-managed multi-agent orchestration config
   habitCatalog: [], // admin-controlled frontend habit cards
+  profileContact: null, // { name, email, consent }
+  reminderSettings: null, // { enabled, cadence, time, channel }
+  feedback: [], // user journey feedback submissions
+  engagementEvents: [], // generated registration, milestone, reminder email events
   streak: 0,
   best: 0,
   resisted: 0,
@@ -50,6 +54,80 @@ export const defaultHabitCatalog = [
   { id: 'risk-gambling', code: 'RISK', name: 'Gambling', description: 'Betting urges, chasing losses, boredom-triggered sessions.', active: true },
 ]
 
+export const defaultReminderSettings = {
+  enabled: false,
+  cadence: 'Daily',
+  time: '20:30',
+  channel: 'Email',
+}
+
+const milestoneDays = [1, 3, 7, 10, 14, 21]
+
+function eventId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+}
+
+function currentContact() {
+  const email = state.profileContact?.email || state.user?.email || ''
+  const name = state.profileContact?.name || state.user?.displayName || 'there'
+  return { email, name }
+}
+
+function emailTemplate(type, data = {}) {
+  const habit = state.profile?.habit || data.habit || 'your habit'
+  const name = currentContact().name
+  if (type === 'registration') {
+    return {
+      subject: `Welcome to Unhook, ${name}`,
+      preheader: 'Your private recovery plan is ready to begin.',
+      body: `Hi ${name}, your Unhook journey for ${habit} is ready. Start with one honest check-in today, use SOS when an urge hits, and let the coach help you adjust the plan step by step.`,
+    }
+  }
+  if (type === 'milestone') {
+    return {
+      subject: `You reached day ${data.day} on Unhook`,
+      preheader: `A small win against ${habit} is now visible.`,
+      body: `Hi ${name}, you reached day ${data.day} while working on ${habit}. Keep the next step small: notice the cue, use your replacement action, and record what happens today.`,
+    }
+  }
+  if (type === 'reminder') {
+    return {
+      subject: `Your Unhook check-in reminder`,
+      preheader: `A gentle ${state.reminderSettings?.cadence?.toLowerCase() || 'daily'} nudge for ${habit}.`,
+      body: `Hi ${name}, this is your reminder to check in on ${habit}. Open Today, log what happened, and choose one replacement action before the day ends.`,
+    }
+  }
+  return {
+    subject: 'Unhook update',
+    preheader: 'A recovery journey update is ready.',
+    body: `Hi ${name}, your Unhook journey has a new update.`,
+  }
+}
+
+function queueEmail(type, data = {}) {
+  const contact = currentContact()
+  const template = emailTemplate(type, data)
+  const event = {
+    id: eventId(type),
+    type,
+    status: contact.email && state.profileContact?.consent !== false ? 'Ready to send' : 'Needs email consent',
+    to: contact.email,
+    createdAt: new Date().toISOString(),
+    ...data,
+    ...template,
+  }
+  state.engagementEvents.unshift(event)
+  state.engagementEvents = state.engagementEvents.slice(0, 40)
+  return event
+}
+
+function hasEmailEvent(type, match = {}) {
+  return state.engagementEvents.some((event) => (
+    event.type === type &&
+    Object.entries(match).every(([key, value]) => event[key] === value)
+  ))
+}
+
 function recompute() {
   const sorted = [...state.checkins].sort((a, b) => a.day.localeCompare(b.day))
   let run = 0, best = 0, resisted = 0, relapsed = 0
@@ -68,6 +146,10 @@ function hydrate(data) {
   state.adminUsers = Array.isArray(data?.adminUsers) && data.adminUsers.length ? data.adminUsers : [...demoAdminUsers]
   state.aiAgents = Array.isArray(data?.aiAgents) && data.aiAgents.length ? data.aiAgents : [...defaultAiAgents]
   state.habitCatalog = Array.isArray(data?.habitCatalog) && data.habitCatalog.length ? data.habitCatalog : [...defaultHabitCatalog]
+  state.profileContact = data?.profileContact || null
+  state.reminderSettings = data?.reminderSettings || { ...defaultReminderSettings }
+  state.feedback = Array.isArray(data?.feedback) ? data.feedback : []
+  state.engagementEvents = Array.isArray(data?.engagementEvents) ? data.engagementEvents : []
   recompute()
 }
 
@@ -80,6 +162,10 @@ async function persist() {
     adminUsers: state.adminUsers,
     aiAgents: state.aiAgents,
     habitCatalog: state.habitCatalog,
+    profileContact: state.profileContact,
+    reminderSettings: state.reminderSettings,
+    feedback: state.feedback,
+    engagementEvents: state.engagementEvents,
   })
 }
 
@@ -109,6 +195,7 @@ export function boot() {
 export async function setPlan(profile, plan) {
   state.profile = profile
   state.plan = plan
+  if (!hasEmailEvent('registration')) queueEmail('registration', { habit: profile.habit })
   await persist()
 }
 
@@ -118,6 +205,43 @@ export async function addCheckin({ status, mood, note }) {
   if (ex) Object.assign(ex, { status, mood, note })
   else state.checkins.push({ day, status, mood, note })
   recompute()
+  for (const milestone of milestoneDays) {
+    if (state.streak >= milestone && !hasEmailEvent('milestone', { day: milestone })) {
+      queueEmail('milestone', { day: milestone, habit: state.profile?.habit })
+    }
+  }
+  await persist()
+}
+
+export async function updateProfileContact(contact) {
+  state.profileContact = {
+    name: String(contact.name || '').trim(),
+    email: String(contact.email || '').trim(),
+    consent: !!contact.consent,
+  }
+  if (state.profile && state.profileContact.email && state.profileContact.consent && !hasEmailEvent('registration')) {
+    queueEmail('registration', { habit: state.profile.habit })
+  }
+  await persist()
+}
+
+export async function updateReminderSettings(settings) {
+  state.reminderSettings = { ...state.reminderSettings, ...settings }
+  if (state.reminderSettings.enabled && !hasEmailEvent('reminder')) {
+    queueEmail('reminder', { cadence: state.reminderSettings.cadence, time: state.reminderSettings.time })
+  }
+  await persist()
+}
+
+export async function submitFeedback(feedback) {
+  state.feedback.unshift({
+    id: eventId('feedback'),
+    createdAt: new Date().toISOString(),
+    habit: state.profile?.habit || '',
+    streak: state.streak,
+    ...feedback,
+  })
+  state.feedback = state.feedback.slice(0, 20)
   await persist()
 }
 
@@ -189,6 +313,10 @@ export async function resetAll() {
   state.adminUsers = [...demoAdminUsers]
   state.aiAgents = [...defaultAiAgents]
   state.habitCatalog = [...defaultHabitCatalog]
+  state.profileContact = null
+  state.reminderSettings = { ...defaultReminderSettings }
+  state.feedback = []
+  state.engagementEvents = []
   recompute()
   await persist()
 }

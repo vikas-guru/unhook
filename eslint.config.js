@@ -9,6 +9,9 @@ export default [
   ...pluginVue.configs['flat/essential'],
   {
     files: ['**/*.{js,vue}'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
