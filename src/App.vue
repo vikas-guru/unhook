@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
     <header class="unh-topbar sticky top-0 z-30">
       <div
         class="unh-topbar-inner mx-auto flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12"
-        :class="route.path === '/admin' ? 'max-w-[112rem]' : route.path === '/start' ? 'max-w-[88rem]' : 'max-w-2xl'"
+        :class="route.path === '/admin' ? 'max-w-[112rem]' : ['/start', '/profile'].includes(route.path) ? 'max-w-[88rem]' : 'max-w-2xl'"
       >
         <RouterLink to="/today" class="unh-brand-lockup group" aria-label="Unhook — home">
           <span class="unh-brand-mark" aria-hidden="true">🪝</span>
@@ -170,7 +170,7 @@ onBeforeUnmount(() => {
     <!-- Main -->
     <main
       class="mx-auto pb-28 pt-6"
-      :class="route.path === '/admin' ? 'w-full max-w-[112rem] px-5 xl:px-8' : route.path === '/start' ? 'max-w-[88rem] px-5 sm:px-8 lg:px-12' : 'max-w-2xl px-4'"
+      :class="route.path === '/admin' ? 'w-full max-w-[112rem] px-5 xl:px-8' : ['/start', '/profile'].includes(route.path) ? 'max-w-[88rem] px-5 sm:px-8 lg:px-12' : 'max-w-2xl px-4'"
     >
       <AppLoader v-if="state.loading" />
       <RouterView v-else v-slot="{ Component }">
