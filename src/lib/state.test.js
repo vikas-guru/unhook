@@ -15,7 +15,23 @@
 //  * These actions persist via saveState -> localStorage (db is null with no Firebase
 //    config), which jsdom handles fine; we clear localStorage per test too.
 import { describe, it, expect, beforeEach } from 'vitest'
-import { state, addCheckin, setPlan, resetAll, hasPlan, todayEntry, updateProfileContact, updateReminderSettings, updateSmtpSettings } from './state.js'
+import {
+  state,
+  addCheckin,
+  setPlan,
+  resetAll,
+  hasPlan,
+  todayEntry,
+  updateProfileContact,
+  updateReminderSettings,
+  updateSmtpSettings,
+  queueTestEmail,
+  submitFeedback,
+  addHabitCatalogItem,
+  updateHabitCatalogItem,
+  removeHabitCatalogItem,
+  resetHabitCatalog,
+} from './state.js'
 import { todayKey } from './store.js'
 
 /** Seed historical (non-today) check-ins straight onto the reactive array. */
@@ -97,6 +113,59 @@ describe('engagement email lifecycle', () => {
 
     expect(state.reminderSettings.enabled).toBe(true)
     expect(state.engagementEvents[0].type).toBe('reminder')
+  })
+
+  it('queues an SMTP test email event through the same lifecycle outbox', async () => {
+    await updateProfileContact({ name: 'Demo User', email: 'demo@unhook.local', consent: true })
+    await queueTestEmail()
+
+    expect(state.engagementEvents[0]).toMatchObject({
+      type: 'smtp-test',
+      to: 'demo@unhook.local',
+      provider: 'Office365 SMTP',
+      status: 'SMTP ready',
+    })
+  })
+})
+
+describe('feedback and admin habit catalog controls', () => {
+  it('captures user feedback with current habit and streak context', async () => {
+    await setPlan({ habit: 'vaping' }, { title: 'Breathe Clear' })
+    await addCheckin({ status: 'resisted', mood: 4, note: 'walked outside' })
+    await submitFeedback({ rating: 5, message: 'The SOS flow helped.', completed: false })
+
+    expect(state.feedback[0]).toMatchObject({
+      rating: 5,
+      message: 'The SOS flow helped.',
+      habit: 'vaping',
+      streak: 1,
+      completed: false,
+    })
+  })
+
+  it('adds, updates, removes, and resets admin-controlled homepage habit cards', async () => {
+    const initialCount = state.habitCatalog.length
+    await addHabitCatalogItem({
+      code: 'SLEEP',
+      name: 'Late-night streaming',
+      description: 'One more episode loops and bedtime drift.',
+    })
+
+    const added = state.habitCatalog.at(-1)
+    expect(state.habitCatalog).toHaveLength(initialCount + 1)
+    expect(added).toMatchObject({ code: 'SLEEP', active: true })
+
+    await updateHabitCatalogItem(added.id, { active: false, name: 'Streaming binges' })
+    expect(state.habitCatalog.find((item) => item.id === added.id)).toMatchObject({
+      name: 'Streaming binges',
+      active: false,
+    })
+
+    await removeHabitCatalogItem(added.id)
+    expect(state.habitCatalog).toHaveLength(initialCount)
+
+    await resetHabitCatalog()
+    expect(state.habitCatalog.map((item) => item.name)).toContain('Doom-scrolling')
   })
 })
 

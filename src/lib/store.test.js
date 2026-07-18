@@ -30,12 +30,19 @@ describe('saveState() / loadState() round-trip via localStorage', () => {
   })
 
   it('persists a blob and loads it back with all fields intact', async () => {
-    const blob = { profile: { habit: 'doom-scrolling' }, checkins: [{ day: '2025-01-01', status: 'resisted' }] }
+    const blob = {
+      profile: { habit: 'doom-scrolling' },
+      checkins: [{ day: '2025-01-01', status: 'resisted' }],
+      smtpSettings: { enabled: true, host: 'smtp.office365.com' },
+      engagementEvents: [{ id: 'evt-1', type: 'registration', status: 'SMTP ready' }],
+    }
     await saveState(null, blob)
 
     const loaded = await loadState(null)
     expect(loaded.profile).toEqual({ habit: 'doom-scrolling' })
     expect(loaded.checkins).toEqual([{ day: '2025-01-01', status: 'resisted' }])
+    expect(loaded.smtpSettings.host).toBe('smtp.office365.com')
+    expect(loaded.engagementEvents[0].status).toBe('SMTP ready')
   })
 
   it('actually writes JSON into localStorage under the local key', async () => {
