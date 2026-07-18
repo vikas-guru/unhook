@@ -1,0 +1,34 @@
+{
+  "id": "/",
+  "name": "Unhook — a kinder way to quit",
+  "short_name": "Unhook",
+  "description": "Your AI coach for breaking bad habits and beating addiction. Personalized quit plans, in-the-moment craving support, and adaptive daily coaching.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#13160f",
+  "theme_color": "#13160f",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["health", "lifestyle", "medical"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/maskable-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Craving SOS",
+      "short_name": "SOS",
+      "description": "Get immediate support for a craving",
+      "url": "/today?sos=1"
+    },
+    {
+      "name": "Start a new plan",
+      "short_name": "New plan",
+      "description": "Begin a fresh assessment",
+      "url": "/start"
+    }
+  ]
+}

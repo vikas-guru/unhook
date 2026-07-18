@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#161a12"/>
+      <stop offset="1" stop-color="#0e110a"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.82" cy="0.05" r="0.6">
+      <stop offset="0" stop-color="#e0785a" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#e0785a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.05" cy="1" r="0.6">
+      <stop offset="0" stop-color="#5fb27f" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#5fb27f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0785a"/>
+      <stop offset="1" stop-color="#cf6144"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <!-- Brand mark -->
+  <rect x="96" y="92" width="96" height="96" rx="26" fill="url(#mark)"/>
+  <text x="144" y="140" dominant-baseline="central" text-anchor="middle" font-size="54">🪝</text>
+  <text x="212" y="148" font-family="Georgia, 'Times New Roman', serif" font-size="40" font-weight="600" fill="#ece7db">Unhook</text>
+
+  <!-- Eyebrow -->
+  <text x="98" y="300" font-family="Arial, Helvetica, sans-serif" font-size="24" letter-spacing="5" fill="#e0785a">A KINDER WAY TO QUIT</text>
+
+  <!-- Headline -->
+  <text x="94" y="382" font-family="Georgia, 'Times New Roman', serif" font-size="82" font-weight="600" fill="#ece7db">Loosen the grip of the</text>
+  <text x="94" y="470" font-family="Georgia, 'Times New Roman', serif" font-size="82" font-weight="600" fill="#ece7db">habit that's <tspan fill="#e0785a" font-style="italic">held on.</tspan></text>
+
+  <!-- Subline -->
+  <text x="98" y="540" font-family="Arial, Helvetica, sans-serif" font-size="27" fill="#9aa393">Your AI coach for cravings, small wins, and the hard nights.</text>
+</svg>
