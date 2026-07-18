@@ -97,21 +97,35 @@ onBeforeUnmount(() => {
           <RouterLink to="/today" class="chip px-3 py-1.5">Today</RouterLink>
           <RouterLink to="/profile" class="chip px-3 py-1.5">Profile</RouterLink>
         </nav>
-        <div class="flex items-center gap-2 text-sm">
+        <div class="flex items-center gap-1.5 text-sm">
+          <!-- Desktop: primary nav shown side by side. Hidden once signed in
+               (signed-in users navigate via the bottom nav) and on mobile,
+               where the hamburger takes over. -->
+          <nav v-if="!state.user" class="unh-topnav" aria-label="Primary">
+            <RouterLink v-if="hasPlan()" to="/today" class="unh-topbar-link">Today</RouterLink>
+            <RouterLink to="/insights" class="unh-topbar-link">Insights</RouterLink>
+            <RouterLink to="/profile" class="unh-topbar-link">Profile</RouterLink>
+            <RouterLink to="/admin" class="unh-topbar-link">Admin</RouterLink>
+          </nav>
+
           <button v-if="hasPlan()" class="chip px-3 py-1.5" @click="openCoach">💬 Coach</button>
-          <RouterLink to="/admin" class="unh-topbar-link unh-hide-sm">Admin</RouterLink>
+
           <template v-if="state.user">
-            <span class="hidden text-[var(--muted)] sm:inline">{{ state.user.isAnonymous ? 'Guest' : state.user.displayName || state.user.email }}</span>
+            <span class="unh-account unh-hide-sm">{{ state.user.isAnonymous ? 'Guest' : state.user.displayName || state.user.email }}</span>
             <button class="chip px-3 py-1.5" @click="logout">Sign out</button>
           </template>
           <template v-else-if="isFirebaseConfigured">
-            <button class="chip px-3 py-1.5" @click="signInGuest">Guest</button>
+            <button class="chip px-3 py-1.5 unh-hide-sm" @click="signInGuest">Guest</button>
             <button class="btn btn-primary px-3 py-1.5 text-white" @click="signInWithGoogle">Sign in</button>
           </template>
           <span v-else class="unh-status unh-hide-sm" title="Your data stays on this device">
             <span class="unh-status-dot" aria-hidden="true"></span>
             <span class="unh-status-text">Local <span aria-hidden="true">·</span> <span class="unh-status-sub">private</span></span>
           </span>
+
+          <button v-if="canInstall" type="button" class="chip px-3 py-1.5 unh-install-chip" @click="installApp">
+            <span aria-hidden="true">📲</span> <span class="unh-hide-sm">Install</span>
+          </button>
 
           <!-- Menu -->
           <div class="unh-menu-wrap">
@@ -276,6 +290,21 @@ onBeforeUnmount(() => {
 }
 /* Hide the quieter items once space gets tight — the menu covers them. */
 @media (max-width: 560px) { .unh-hide-sm { display: none; } }
+
+/* Desktop inline nav: primary links shown side by side. Below the breakpoint
+   the hamburger takes over, so this hides and the menu-wrap shows. */
+.unh-topnav { display: none; }
+.unh-install-chip { display: none; }
+.unh-account {
+  padding: 0.4rem 0.75rem; border-radius: 999px;
+  color: var(--muted); font-size: 0.82rem;
+  max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@media (min-width: 860px) {
+  .unh-topnav { display: flex; align-items: center; gap: 0.15rem; margin-right: 0.3rem; }
+  .unh-install-chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .unh-menu-wrap { display: none; }        /* hamburger is mobile-only */
+}
 
 /* Menu trigger — a tidy icon button that morphs to an X when open ------- */
 .unh-menu-wrap { position: relative; }

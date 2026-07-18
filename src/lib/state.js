@@ -17,6 +17,7 @@ export const state = reactive({
   habitCatalog: [], // admin-controlled frontend habit cards
   profileContact: null, // { name, email, consent }
   reminderSettings: null, // { enabled, cadence, time, channel }
+  smtpSettings: null, // admin mail delivery settings; password lives outside frontend
   feedback: [], // user journey feedback submissions
   engagementEvents: [], // generated registration, milestone, reminder email events
   streak: 0,
@@ -59,6 +60,17 @@ export const defaultReminderSettings = {
   cadence: 'Daily',
   time: '20:30',
   channel: 'Email',
+}
+
+export const defaultSmtpSettings = {
+  enabled: true,
+  host: 'smtp.office365.com',
+  port: '587',
+  secure: false,
+  username: 'notify@eshipjet.ai',
+  fromEmail: 'notify@eshipjet.ai',
+  fromName: 'Unhook Coach',
+  provider: 'Office365 SMTP',
 }
 
 const milestoneDays = [1, 3, 7, 10, 14, 21]
@@ -107,11 +119,15 @@ function emailTemplate(type, data = {}) {
 function queueEmail(type, data = {}) {
   const contact = currentContact()
   const template = emailTemplate(type, data)
+  const hasConsent = contact.email && state.profileContact?.consent !== false
+  const hasSmtp = !!(state.smtpSettings?.enabled && state.smtpSettings?.host && state.smtpSettings?.fromEmail)
   const event = {
     id: eventId(type),
     type,
-    status: contact.email && state.profileContact?.consent !== false ? 'Ready to send' : 'Needs email consent',
+    status: hasConsent && hasSmtp ? 'SMTP ready' : hasConsent ? 'Needs SMTP setup' : 'Needs email consent',
     to: contact.email,
+    from: state.smtpSettings?.fromEmail || '',
+    provider: state.smtpSettings?.provider || 'Custom SMTP',
     createdAt: new Date().toISOString(),
     ...data,
     ...template,
@@ -148,6 +164,7 @@ function hydrate(data) {
   state.habitCatalog = Array.isArray(data?.habitCatalog) && data.habitCatalog.length ? data.habitCatalog : [...defaultHabitCatalog]
   state.profileContact = data?.profileContact || null
   state.reminderSettings = data?.reminderSettings || { ...defaultReminderSettings }
+  state.smtpSettings = data?.smtpSettings || { ...defaultSmtpSettings }
   state.feedback = Array.isArray(data?.feedback) ? data.feedback : []
   state.engagementEvents = Array.isArray(data?.engagementEvents) ? data.engagementEvents : []
   recompute()
@@ -164,6 +181,7 @@ async function persist() {
     habitCatalog: state.habitCatalog,
     profileContact: state.profileContact,
     reminderSettings: state.reminderSettings,
+    smtpSettings: state.smtpSettings,
     feedback: state.feedback,
     engagementEvents: state.engagementEvents,
   })
@@ -180,8 +198,14 @@ export function boot() {
     watchAuth(async (u) => {
       state.user = u
       state.loading = true
-      hydrate(await loadState(u?.uid))
-      state.loading = false
+      try {
+        hydrate(await loadState(u?.uid))
+      } catch (e) {
+        console.warn('State hydrate failed, starting fresh:', e?.message)
+        hydrate(null)
+      } finally {
+        state.loading = false
+      }
     })
   } else {
     ;(async () => {
@@ -219,6 +243,19 @@ export async function updateProfileContact(contact) {
     email: String(contact.email || '').trim(),
     consent: !!contact.consent,
   }
+  state.engagementEvents = state.engagementEvents.map((event) => {
+    if (!state.profileContact.email || !state.profileContact.consent) {
+      return { ...event, status: 'Needs email consent' }
+    }
+    const smtpReady = state.smtpSettings?.enabled && state.smtpSettings?.host && state.smtpSettings?.fromEmail
+    return {
+      ...event,
+      to: event.to || state.profileContact.email,
+      status: smtpReady ? 'SMTP ready' : 'Needs SMTP setup',
+      from: state.smtpSettings?.fromEmail || event.from || '',
+      provider: state.smtpSettings?.provider || event.provider || 'Custom SMTP',
+    }
+  })
   if (state.profile && state.profileContact.email && state.profileContact.consent && !hasEmailEvent('registration')) {
     queueEmail('registration', { habit: state.profile.habit })
   }
@@ -230,6 +267,34 @@ export async function updateReminderSettings(settings) {
   if (state.reminderSettings.enabled && !hasEmailEvent('reminder')) {
     queueEmail('reminder', { cadence: state.reminderSettings.cadence, time: state.reminderSettings.time })
   }
+  await persist()
+}
+
+export async function updateSmtpSettings(settings) {
+  state.smtpSettings = {
+    ...state.smtpSettings,
+    ...settings,
+    host: String(settings.host ?? state.smtpSettings?.host ?? '').trim(),
+    port: String(settings.port ?? state.smtpSettings?.port ?? '587').trim(),
+    username: String(settings.username ?? state.smtpSettings?.username ?? '').trim(),
+    fromEmail: String(settings.fromEmail ?? state.smtpSettings?.fromEmail ?? '').trim(),
+    fromName: String(settings.fromName ?? state.smtpSettings?.fromName ?? '').trim(),
+    provider: String(settings.provider ?? state.smtpSettings?.provider ?? 'Custom SMTP').trim(),
+    enabled: !!settings.enabled,
+    secure: !!settings.secure,
+  }
+  state.engagementEvents = state.engagementEvents.map((event) => {
+    if (!event.to) return { ...event, status: 'Needs email consent' }
+    if (!state.smtpSettings.enabled || !state.smtpSettings.host || !state.smtpSettings.fromEmail) {
+      return { ...event, status: 'Needs SMTP setup', from: state.smtpSettings.fromEmail, provider: state.smtpSettings.provider }
+    }
+    return { ...event, status: 'SMTP ready', from: state.smtpSettings.fromEmail, provider: state.smtpSettings.provider }
+  })
+  await persist()
+}
+
+export async function queueTestEmail() {
+  queueEmail('smtp-test', { habit: state.profile?.habit || 'SMTP setup' })
   await persist()
 }
 
@@ -315,6 +380,7 @@ export async function resetAll() {
   state.habitCatalog = [...defaultHabitCatalog]
   state.profileContact = null
   state.reminderSettings = { ...defaultReminderSettings }
+  state.smtpSettings = { ...defaultSmtpSettings }
   state.feedback = []
   state.engagementEvents = []
   recompute()

@@ -9,6 +9,7 @@ const routes = [
   { path: '/today', component: () => import('./features/today/TodayView.vue') },
   { path: '/watch', component: () => import('./features/videos/VideosView.vue') },
   { path: '/read', component: () => import('./features/blogs/BlogsView.vue') },
+  { path: '/learn', component: () => import('./features/learn/LearnView.vue') },
   { path: '/insights', component: () => import('./features/analytics/AnalyticsView.vue') },
   { path: '/profile', component: () => import('./features/profile/ProfileView.vue') },
   { path: '/admin', component: () => import('./features/admin/AdminView.vue') },

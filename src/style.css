@@ -772,6 +772,22 @@ body::after {
   gap: 10px;
   align-items: stretch;
 }
+.smtp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.smtp-check {
+  min-height: 48px;
+  align-self: end;
+}
+.smtp-actions {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  justify-content: flex-end;
+}
 .habit-catalog-form {
   display: grid;
   grid-template-columns: 150px 220px minmax(280px, 1fr) auto;
@@ -1202,6 +1218,9 @@ body::after {
   .user-table-row,
   .user-row { grid-template-columns: 1fr; }
   .admin-add-user { grid-template-columns: 1fr; }
+  .smtp-grid { grid-template-columns: 1fr; }
+  .smtp-actions { justify-content: stretch; flex-direction: column; }
+  .smtp-actions .btn { width: 100%; }
   .habit-catalog-form,
   .habit-catalog-grid { grid-template-columns: 1fr; }
   .frontend-strip,

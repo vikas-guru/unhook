@@ -604,19 +604,19 @@ async function finish() {
           </button>
         </div>
 
-        <!-- reminders: shown inline on mobile; the rail replaces them on desktop -->
-        <section class="unh-remind unh-remind--mobile" aria-label="Gentle reminders">
+        <!-- Mobile only: a single contextual reminder (the rail covers desktop). -->
+        <section class="unh-remind unh-remind--mobile" aria-label="A gentle reminder">
           <p class="unh-remind-head">
             <span class="unh-live unh-live--calm" aria-hidden="true"></span>
-            A few gentle reminders while you go
+            A gentle reminder while you go
           </p>
-          <ul class="unh-remind-grid" role="list">
-            <li v-for="f in facts" :key="f.title" class="unh-fact">
-              <span class="unh-fact-icon" aria-hidden="true">{{ f.icon }}</span>
-              <strong class="unh-fact-title">{{ f.title }}</strong>
-              <span class="unh-fact-body">{{ f.body }}</span>
-            </li>
-          </ul>
+          <div class="unh-remind-single">
+            <span class="unh-fact-icon" aria-hidden="true">{{ facts[stepIndex].icon }}</span>
+            <span class="unh-remind-single-text">
+              <strong class="unh-fact-title">{{ facts[stepIndex].title }}</strong>
+              <span class="unh-fact-body">{{ facts[stepIndex].body }}</span>
+            </span>
+          </div>
         </section>
         </div><!-- /.unh-wiz-main -->
 
@@ -1250,6 +1250,13 @@ async function finish() {
 
 /* Reminders show inline on mobile only; the rail covers desktop. */
 @media (min-width: 1024px) { .unh-remind--mobile { display: none; } }
+.unh-remind-single {
+  display: flex; align-items: flex-start; gap: 0.9rem;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid var(--hair); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(95, 178, 127, 0.05), transparent 60%), var(--panel);
+}
+.unh-remind-single-text { display: flex; flex-direction: column; }
 
 /* ---------------------------- Voice input ------------------------------ */
 .unh-field-wrap { position: relative; }

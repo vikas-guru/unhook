@@ -22,9 +22,14 @@ npm run dev
 ## Verification
 
 ```sh
+npm run lint
 npm test
 npm run build
 ```
+
+## Hackathon Readiness
+
+See [HACKATHON_READINESS.md](./HACKATHON_READINESS.md) for admin credentials, SMTP delivery model, demo flow, judging checklist mapping, and end-to-end verification notes.
 
 ## Firebase Hosting
 

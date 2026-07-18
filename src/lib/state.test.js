@@ -15,7 +15,7 @@
 //  * These actions persist via saveState -> localStorage (db is null with no Firebase
 //    config), which jsdom handles fine; we clear localStorage per test too.
 import { describe, it, expect, beforeEach } from 'vitest'
-import { state, addCheckin, setPlan, resetAll, hasPlan, todayEntry } from './state.js'
+import { state, addCheckin, setPlan, resetAll, hasPlan, todayEntry, updateProfileContact, updateReminderSettings, updateSmtpSettings } from './state.js'
 import { todayKey } from './store.js'
 
 /** Seed historical (non-today) check-ins straight onto the reactive array. */
@@ -60,6 +60,43 @@ describe('hasPlan() / setPlan()', () => {
     expect(hasPlan()).toBe(true)
     expect(state.profile).toEqual({ habit: 'smoking', trigger: 'coffee' })
     expect(state.plan.title).toBe('Clear Air')
+  })
+})
+
+describe('engagement email lifecycle', () => {
+  it('queues a registration email when a plan is created', async () => {
+    await setPlan({ habit: 'doom-scrolling', trigger: 'bed' }, { title: 'Evening Reset' })
+
+    expect(state.engagementEvents).toHaveLength(1)
+    expect(state.engagementEvents[0].type).toBe('registration')
+    expect(state.engagementEvents[0].status).toBe('Needs email consent')
+  })
+
+  it('marks lifecycle emails SMTP ready after user consent and admin SMTP setup', async () => {
+    await setPlan({ habit: 'phone overuse' }, { title: 'Presence Plan' })
+    await updateProfileContact({ name: 'Demo User', email: 'demo@unhook.local', consent: true })
+    await updateSmtpSettings({
+      enabled: true,
+      provider: 'Office365 SMTP',
+      host: 'smtp.office365.com',
+      port: '587',
+      username: 'notify@eshipjet.ai',
+      fromEmail: 'notify@eshipjet.ai',
+      fromName: 'Unhook Coach',
+      secure: false,
+    })
+
+    expect(state.smtpSettings.host).toBe('smtp.office365.com')
+    expect(state.engagementEvents[0].status).toBe('SMTP ready')
+    expect(state.engagementEvents[0].from).toBe('notify@eshipjet.ai')
+  })
+
+  it('queues a reminder email event when reminders are enabled', async () => {
+    await updateProfileContact({ name: 'Demo User', email: 'demo@unhook.local', consent: true })
+    await updateReminderSettings({ enabled: true, cadence: 'Daily', time: '20:30', channel: 'Email' })
+
+    expect(state.reminderSettings.enabled).toBe(true)
+    expect(state.engagementEvents[0].type).toBe('reminder')
   })
 })
 

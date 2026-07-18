@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { state, addAdminUser, addHabitCatalogItem, removeHabitCatalogItem, resetAll, resetAiAgents, resetHabitCatalog, seedDemoAdminUsers, updateAiAgent, updateHabitCatalogItem } from '../../lib/state.js'
+import { state, addAdminUser, addHabitCatalogItem, queueTestEmail, removeHabitCatalogItem, resetAll, resetAiAgents, resetHabitCatalog, seedDemoAdminUsers, updateAiAgent, updateHabitCatalogItem, updateSmtpSettings } from '../../lib/state.js'
 import { agentTelemetry } from '../../lib/aiAgents.js'
 import { isFirebaseConfigured, signInWithGoogle, signInGuest, logout } from '../../lib/firebase.js'
 
@@ -17,6 +17,15 @@ const adminNote = ref('')
 const newUserName = ref('')
 const newUserHabit = ref('')
 const newUserRisk = ref('Medium')
+const smtpProvider = ref(state.smtpSettings?.provider || 'Custom SMTP')
+const smtpHost = ref(state.smtpSettings?.host || '')
+const smtpPort = ref(state.smtpSettings?.port || '587')
+const smtpUsername = ref(state.smtpSettings?.username || '')
+const smtpFromEmail = ref(state.smtpSettings?.fromEmail || 'hello@unhook.local')
+const smtpFromName = ref(state.smtpSettings?.fromName || 'Unhook Coach')
+const smtpEnabled = ref(state.smtpSettings?.enabled ?? false)
+const smtpSecure = ref(state.smtpSettings?.secure ?? false)
+const smtpSaved = ref(false)
 const adminEmail = ref('')
 const adminPassword = ref('')
 const adminError = ref('')
@@ -216,6 +225,26 @@ async function saveAdminUser() {
   newUserName.value = ''
   newUserHabit.value = ''
   newUserRisk.value = 'Medium'
+}
+
+async function saveSmtpSettings() {
+  await updateSmtpSettings({
+    provider: smtpProvider.value,
+    host: smtpHost.value,
+    port: smtpPort.value,
+    username: smtpUsername.value,
+    fromEmail: smtpFromEmail.value,
+    fromName: smtpFromName.value,
+    enabled: smtpEnabled.value,
+    secure: smtpSecure.value,
+  })
+  smtpSaved.value = true
+  setTimeout(() => (smtpSaved.value = false), 1800)
+}
+
+async function sendSmtpTest() {
+  await saveSmtpSettings()
+  await queueTestEmail()
 }
 
 function loginAdmin() {
@@ -756,6 +785,64 @@ async function confirmReset() {
             </div>
           </div>
 
+          <div class="admin-card admin-card-wide">
+            <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div>
+                <p class="eyebrow">SMTP SETTINGS</p>
+                <h3 class="mt-2 font-display text-2xl font-semibold">Drive outbound emails from admin.</h3>
+                <p class="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+                  Configure the delivery envelope here. SMTP passwords and API keys should be placed in a backend secret or Firebase Function environment, not browser localStorage.
+                </p>
+              </div>
+              <span class="status-pill">{{ state.smtpSettings?.enabled && state.smtpSettings?.host ? 'SMTP READY' : 'SETUP NEEDED' }}</span>
+            </div>
+            <form class="smtp-grid mt-5" @submit.prevent="saveSmtpSettings">
+              <label>
+                <span class="control-kicker">Provider</span>
+                <select v-model="smtpProvider" class="field mt-2 px-4 py-3 text-sm">
+                  <option>Custom SMTP</option>
+                  <option>Gmail SMTP</option>
+                  <option>SendGrid SMTP</option>
+                  <option>Resend SMTP</option>
+                  <option>Amazon SES SMTP</option>
+                </select>
+              </label>
+              <label>
+                <span class="control-kicker">Host</span>
+                <input v-model="smtpHost" class="field mt-2 px-4 py-3 text-sm" placeholder="smtp.example.com" />
+              </label>
+              <label>
+                <span class="control-kicker">Port</span>
+                <input v-model="smtpPort" class="field mt-2 px-4 py-3 text-sm" placeholder="587" />
+              </label>
+              <label>
+                <span class="control-kicker">Username</span>
+                <input v-model="smtpUsername" class="field mt-2 px-4 py-3 text-sm" placeholder="smtp user or API key id" />
+              </label>
+              <label>
+                <span class="control-kicker">From email</span>
+                <input v-model="smtpFromEmail" class="field mt-2 px-4 py-3 text-sm" type="email" placeholder="hello@unhook.app" />
+              </label>
+              <label>
+                <span class="control-kicker">From name</span>
+                <input v-model="smtpFromName" class="field mt-2 px-4 py-3 text-sm" placeholder="Unhook Coach" />
+              </label>
+              <label class="agent-check smtp-check">
+                <input v-model="smtpEnabled" type="checkbox" />
+                <span>Enable SMTP delivery</span>
+              </label>
+              <label class="agent-check smtp-check">
+                <input v-model="smtpSecure" type="checkbox" />
+                <span>Use SSL/TLS</span>
+              </label>
+              <div class="smtp-actions">
+                <button type="submit" class="btn btn-primary px-5 py-3 text-xs">Save SMTP</button>
+                <button type="button" class="btn btn-ghost px-5 py-3 text-xs" @click="sendSmtpTest">Queue test email</button>
+              </div>
+            </form>
+            <p v-if="smtpSaved" class="mt-3 text-sm text-[var(--accent-2)]">SMTP settings saved.</p>
+          </div>
+
           <div class="admin-card">
             <p class="eyebrow">EMAIL LIFECYCLE</p>
             <h3 class="mt-2 font-display text-2xl font-semibold">Registration and step-by-step emails.</h3>
@@ -763,7 +850,7 @@ async function confirmReset() {
               <div v-for="event in state.engagementEvents.slice(0, 8)" :key="event.id" class="email-event">
                 <div>
                   <strong>{{ event.subject }}</strong>
-                  <small>{{ event.to || 'No recipient yet' }} · {{ event.preheader }}</small>
+                  <small>{{ event.to || 'No recipient yet' }} · {{ event.from || state.smtpSettings?.fromEmail || 'No sender' }} · {{ event.preheader }}</small>
                 </div>
                 <span>{{ event.status }}</span>
               </div>

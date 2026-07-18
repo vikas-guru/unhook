@@ -2,12 +2,11 @@
 // Mobile-first bottom navigation with a raised central "SOS" action.
 // On desktop it centers under the app column. Uses the global ui store for SOS.
 import { openSOS } from '../lib/ui.js'
-import { BarChart3, BookOpen, Clapperboard, LayoutDashboard, LifeBuoy, UserRound } from '@lucide/vue'
+import { BarChart3, GraduationCap, LayoutDashboard, LifeBuoy, UserRound } from '@lucide/vue'
 
 const tabs = [
   { to: '/today', label: 'Today', icon: LayoutDashboard },
-  { to: '/watch', label: 'Watch', icon: Clapperboard },
-  { to: '/read', label: 'Read', icon: BookOpen },
+  { to: '/learn', label: 'Learn', icon: GraduationCap },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
   { to: '/profile', label: 'Profile', icon: UserRound },
 ]

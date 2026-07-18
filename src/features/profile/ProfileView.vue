@@ -169,11 +169,15 @@ async function sendFeedback() {
       <article class="admin-card">
         <p class="eyebrow">EMAIL OUTBOX</p>
         <h2 class="mt-2 font-display text-2xl font-semibold">Generated user lifecycle emails.</h2>
+        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">
+          Delivery is controlled by admin SMTP settings:
+          <span class="text-[var(--ink)]">{{ state.smtpSettings?.enabled && state.smtpSettings?.host ? state.smtpSettings.provider : 'not configured yet' }}</span>.
+        </p>
         <div class="email-event-list mt-5">
           <div v-for="event in state.engagementEvents.slice(0, 6)" :key="event.id" class="email-event">
             <div>
               <strong>{{ event.subject }}</strong>
-              <small>{{ event.preheader }}</small>
+              <small>{{ event.to || 'No recipient yet' }} · {{ event.preheader }}</small>
             </div>
             <span>{{ event.status }}</span>
           </div>
